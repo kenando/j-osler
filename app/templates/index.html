@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J-OSLER AI アシスタント</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #result-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            white-space: pre-wrap; /* Preserve whitespace and newlines */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>J-OSLER AI アシスタント</h1>
+        <form id="case-form">
+            <label for="case-text">症例情報を以下に貼り付けてください:</label>
+            <textarea id="case-text" name="case_text" placeholder="電子カルテの記載や検査結果などをコピー＆ペースト..."></textarea>
+            <button type="submit">病歴要約を生成</button>
+        </form>
+
+        <h2>生成結果</h2>
+        <div id="result-container">
+            <p>ここにAIが生成した病歴要約が表示されます。</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('case-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const caseText = document.getElementById('case-text').value;
+            const resultContainer = document.getElementById('result-container');
+            const submitButton = this.querySelector('button');
+
+            if (!caseText.trim()) {
+                resultContainer.innerHTML = '<p style="color: red;">テキストを入力してください。</p>';
+                return;
+            }
+
+            // Show loading state
+            resultContainer.innerHTML = '<p>生成中...</p>';
+            submitButton.disabled = true;
+            submitButton.style.backgroundColor = '#95a5a6';
+
+            try {
+                const response = await fetch('/api/summarize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ case_text: caseText }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`サーバーエラー: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                resultContainer.innerText = data.summary;
+
+            } catch (error) {
+                console.error('エラー:', error);
+                resultContainer.innerHTML = `<p style="color: red;">エラーが発生しました。もう一度お試しください。<br>${error.message}</p>`;
+            } finally {
+                // Restore button state
+                submitButton.disabled = false;
+                submitButton.style.backgroundColor = '#3498db';
+            }
+        });
+    </script>
+</body>
+</html>
