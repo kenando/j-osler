@@ -34,9 +34,12 @@
             margin-bottom: 15px;
             font-size: 16px;
         }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
         button {
-            display: block;
-            width: 100%;
+            flex-grow: 1;
             padding: 12px;
             background-color: #3498db;
             color: white;
@@ -48,6 +51,12 @@
         }
         button:hover {
             background-color: #2980b9;
+        }
+        button.secondary {
+            background-color: #2ecc71;
+        }
+        button.secondary:hover {
+            background-color: #27ae60;
         }
         #result-container {
             margin-top: 30px;
@@ -61,26 +70,31 @@
 <body>
     <div class="container">
         <h1>J-OSLER AI アシスタント</h1>
-        <form id="case-form">
+        <form id="case-form" onsubmit="return false;">
             <label for="case-text">症例情報を以下に貼り付けてください:</label>
             <textarea id="case-text" name="case_text" placeholder="電子カルテの記載や検査結果などをコピー＆ペースト..."></textarea>
-            <button type="submit">病歴要約を生成</button>
+            <div class="button-group">
+                <button type="button" id="summarize-button">病歴要約を生成</button>
+                <button type="button" id="format-button" class="secondary">検査データを整形</button>
+            </div>
         </form>
 
         <h2>生成結果</h2>
         <div id="result-container">
-            <p>ここにAIが生成した病歴要約が表示されます。</p>
+            <p>ここにAIが生成した結果が表示されます。</p>
         </div>
     </div>
 
     <script>
-        document.getElementById('case-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
+        const caseForm = document.getElementById('case-form');
+        const caseTextEl = document.getElementById('case-text');
+        const resultContainer = document.getElementById('result-container');
+        const summarizeButton = document.getElementById('summarize-button');
+        const formatButton = document.getElementById('format-button');
+        const buttons = [summarizeButton, formatButton];
 
-            const caseText = document.getElementById('case-text').value;
-            const resultContainer = document.getElementById('result-container');
-            const submitButton = this.querySelector('button');
-
+        async function callApi(endpoint, payload, resultKey) {
+            const caseText = caseTextEl.value;
             if (!caseText.trim()) {
                 resultContainer.innerHTML = '<p style="color: red;">テキストを入力してください。</p>';
                 return;
@@ -88,16 +102,13 @@
 
             // Show loading state
             resultContainer.innerHTML = '<p>生成中...</p>';
-            submitButton.disabled = true;
-            submitButton.style.backgroundColor = '#95a5a6';
+            buttons.forEach(b => { b.disabled = true; b.style.opacity = '0.7'; });
 
             try {
-                const response = await fetch('/api/summarize', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ case_text: caseText }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
                 });
 
                 if (!response.ok) {
@@ -105,16 +116,23 @@
                 }
 
                 const data = await response.json();
-                resultContainer.innerText = data.summary;
+                resultContainer.innerText = data[resultKey];
 
             } catch (error) {
                 console.error('エラー:', error);
                 resultContainer.innerHTML = `<p style="color: red;">エラーが発生しました。もう一度お試しください。<br>${error.message}</p>`;
             } finally {
                 // Restore button state
-                submitButton.disabled = false;
-                submitButton.style.backgroundColor = '#3498db';
+                buttons.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
             }
+        }
+
+        summarizeButton.addEventListener('click', () => {
+            callApi('/api/summarize', { case_text: caseTextEl.value }, 'summary');
+        });
+
+        formatButton.addEventListener('click', () => {
+            callApi('/api/format_lab_data', { text_to_format: caseTextEl.value }, 'formatted_text');
         });
     </script>
 </body>
